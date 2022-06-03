@@ -1,0 +1,18 @@
+test_path: '../data/test_bbox/'
+root_path: '../../geoseg/dataset/trainval/'
+train_fraction: 0.8
+trainval_seed: 7
+batch_size: 16 
+create_model_function: raw_satellite_unet
+ours: 2
+fraction_polys: 0.5
+
+
+img_size:  128
+channels: 4
+
+checkpoint_monitor: val_loss
+checkpoint_save_best_only: True
+checkpoint_mode: min
+metrics: ['accuracy']
+epochs: 5000

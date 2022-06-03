@@ -1,0 +1,22 @@
+name: pointnet
+channels:
+- pytorch
+- anaconda
+dependencies:
+- python=3.6
+- numpy
+- cudnn 
+- cupti 
+- cudatoolkit=10.0
+- pip:
+    - ipdb
+    - argparse
+    - matplotlib
+    - opencv-python
+    - tensorflow-gpu
+    - keras
+    - sklearn
+    - scikit-image
+    - pandas
+    - ipython
+    - PyYaml

@@ -9,11 +9,17 @@ This repo supports the implementation of this paper:
   year={2020}
 }
 
-
 ## Getting Started
-Install Environment: conda env create -f environment.yml
-Alignment Correction:
-Point Segmentation:
+
+### Install Environment 
+conda env create -f environment.yml
+
+### Generate Image Patches
+python dataprep/generate_patches.py
+
+### Running Alignment Correction
+
+### Running Point Segmentation
 
 
 
