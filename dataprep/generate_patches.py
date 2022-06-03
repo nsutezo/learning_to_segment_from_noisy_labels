@@ -35,28 +35,6 @@ def patches_from_tif(args,imagename):
         cv2.imwrite(os.path.join(args.patch_savedir,'labels',savetoken),label_patch*225.0)
   print("Done with {}".format(imagename))
 
-def compute_extent(lat, lon,center_x, center_y,row,col):
-  res = 0.5 # m/px
-  conversion = (0.0001 /11.132) * res # deg/px
-  start_lon = lon - (center_x*conversion)
-  stop_lon = lon + ((col-center_x)*conversion)
-
-  bottom_lat =  lat - ((row - center_y)*conversion)
-  top_lat = lat + (center_y*conversion)
-
-  return start_lon, bottom_lat,stop_lon,top_lat
-
-
-def convert_poly_to_rows_cols(poly, min_lon,max_lat):
-  res = 1/0.5 # px/m
-  conversion = (11.132/0.0001) *res  # px / deg
-  lons, lats = poly.exterior.xy 
-  lons =  [int((k - min_lon) * conversion) for k in lons]
-  lats =  [int((max_lat - k ) * conversion) for k in lats]
-  return lats, lons
-
-
-
 
 def generate_from_airs(args):
   if not os.path.isdir(os.path.join(args.root_savedir,'airs')):
@@ -81,14 +59,19 @@ def generate_from_airs(args):
     pool.join()
     print('Done generating images for {}'.format(cur_dir))
 
+
+
+
+
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(
     description= 'Generating Data for training')
   
   args = parser.parse_args()
-  args.patchsize = 128
+  args.patchsize = 512
   args.tifdir = '../../geoseg/dataset/trainval/'
-  args.num_workers = 2
+  args.root_savedir =  '../dataset/'
+  args.num_workers = 4
   args.threshold=0.01 #fraction of building area
 
-  bgenerate_from_airs(args)
+  generate_from_airs(args)

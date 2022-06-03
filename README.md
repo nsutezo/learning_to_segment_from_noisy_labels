@@ -18,8 +18,10 @@ conda env create -f environment.yml
 python dataprep/generate_patches.py
 
 ### Running Alignment Correction
+python learning/alignment_correction.py
 
 ### Running Point Segmentation
+python learning/point_segmentation.py
 
 
 

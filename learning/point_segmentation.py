@@ -1,56 +1,16 @@
-
-import time, os
-# from dataloader import pretrained_DataGenerator as DataGenerator
 from dataloader import DataGenerator
-# from dataloader import bldgs_DataGenerator as DataGenerator
-
 import tensorflow as tf
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
-import yaml, argparse
-from tensorflow.keras.optimizers import Adam, SGD
+import time, os, yaml, argparse
+from tensorflow.keras.optimizers import Adam
 from model import *
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 import matplotlib.pyplot as plt
 import cv2
 from skimage import measure
-from metrics import custom_iou, custom_dice, custom_jaccard
-import tensorflow.keras.backend as K
-
+from metrics import custom_iou, custom_dice
 
 
 my_best = np.Inf
-
-
-def visualize_points(epoch,logs=None):
-    global my_best
-    if logs.get('val_loss') < my_best:
-        # import ipdb; ipdb.set_trace()
-        predicted_y = model.predict(visual_sample_x)
-        images = []
-        alpha = 0.4
-        working_visual_x =  visual_sample_x.copy()
-        for k in range(working_visual_x.shape[0]):
-
-            if sum(predicted_y[k,:,0] > 1) > 0 or sum(predicted_y[k,:,1] >1) > 0:
-                print('bug')
-            ys = np.array(predicted_y[k,:,0]*(working_visual_x.shape[1]-1),dtype='int')
-            xs = np.array(predicted_y[k,:,1]*(working_visual_x.shape[2]-1),dtype='int')
-            ys = ys[predicted_y[k,:,-1]>0.5]
-            xs = xs[predicted_y[k,:,-1]>0.5]
-
-            ys[ys >= working_visual_x.shape[1] ] = working_visual_x.shape[1]-1
-            xs[xs >= working_visual_x.shape[2] ] = working_visual_x.shape[2]-1
-            ys[ys < 0 ] = 0
-            xs[xs < 0 ] = 0
-            working_visual_x[k,ys,xs,0] = 1
-            working_visual_x[k,np.array(visual_sample_y[k,:,0]*(working_visual_x.shape[2]-1),dtype='int'),np.array(visual_sample_y[k,:,1]*(working_visual_x.shape[2]-1),dtype='int'),1]=1
-            working_visual_x[k,np.array(visual_sample_y[k,:,0]*(working_visual_x.shape[2]-1),dtype='int'),np.array(visual_sample_y[k,:,1]*(working_visual_x.shape[2]-1),dtype='int'),2]=1
-            images.append(working_visual_x[k])
-        
-        images = np.stack(images)
-        with file_writer.as_default():
-            tf.summary.image("Sample Images", images, max_outputs=24, step=epoch)
-        my_best = logs.get('val_loss')
 
 def unet_finetune_vis(epoch,logs=None):
     global my_best
@@ -59,20 +19,11 @@ def unet_finetune_vis(epoch,logs=None):
         predicted_y = model.predict(visual_sample_x)
         images = []
         alpha = 0.4
-        # padded_visual_y =  np.zeros((visual_sample_y.shape[0],visual_sample_y.shape[1]+20,visual_sample_y.shape[2]+20,1))
-        # padded_visual_y[:,10:138,10:138,:] = np.expand_dims(visual_sample_y[:,:,:,1], axis=2)
-
-        # padded_predicted_y =  np.zeros((predicted_y.shape[0],predicted_y.shape[1]+20,predicted_y.shape[2]+20,1))
-        # padded_predicted_y[:,10:138,10:138,:] = np.expand_dims(predicted_y[:,:,:,1],axis=2)
-
-
-        padded_visual_y =  np.zeros((visual_sample_y.shape[0],visual_sample_y.shape[1]+20,visual_sample_y.shape[2]+20,visual_sample_y.shape[3]))
+        padded_visual_y =  np.zeros((visual_sample_y.shape[0],visual_sample_y.shape[1]+20,visual_sample_y.shape[2]+20,visual_sample_y.shape[3] ))
         padded_visual_y[:,10:138,10:138,:] = visual_sample_y
-        # padded_visual_y[:,10:106,10:106,:] = visual_sample_y
 
         padded_predicted_y =  np.zeros((predicted_y.shape[0],predicted_y.shape[1]+20,predicted_y.shape[2]+20,predicted_y.shape[3] ))
         padded_predicted_y[:,10:138,10:138,:] = predicted_y
-        # padded_predicted_y[:,10:106,10:106,:] = predicted_y
 
         if visual_sample_x.shape[-1] ==4:
             for k in range(visual_sample_x.shape[0]):
@@ -101,7 +52,7 @@ def unet_finetune_vis(epoch,logs=None):
                 # import ipdb; ipdb.set_trace()
                 
                 new_image = cv2.addWeighted(overlay, alpha, cur_img,1-alpha, 0) 
-                new_image[zcur_point>=126] = 255
+                new_image[zcur_point==255] = 255
                 images.append(new_image/255.0)
         else:
             for k in range(visual_sample_x.shape[0]):
@@ -177,14 +128,13 @@ if __name__ == '__main__':
     visual_sample_x, visual_sample_y = datagenerator.generate_visual_data()
     yaml.dump(args.__dict__, open(os.path.join(args.trained_models_dir,args.training_params_filename),'w'))
 
-    optimizer= Adam(lr=1e-5)
-
-    model = args.create_model_function(image_size=args.img_size, channels=args.channels , num_classes=1)
-
-    model.compile(loss=custom_jaccard, optimizer=optimizer,metrics=[custom_iou, custom_dice,tf.keras.metrics.Precision(),tf.keras.metrics.Recall(),'accuracy'])
-
+    optimizer= Adam()
+    model = args.create_model_function(image_size=args.img_size, channels=args.channels)
+    
+    # model.compile(loss='mse', optimizer=optimizer,metrics=args.metrics)
+    model.compile(loss='binary_crossentropy', optimizer=optimizer,metrics=[custom_iou, custom_dice,tf.keras.metrics.Precision(),tf.keras.metrics.Recall()])
     print(model.summary())
-
+    
     model_checkpoint_filepath =  os.path.join(args.trained_models_dir, 'weights-improvement-{epoch:02d}-{val_loss:.2f}.hdf5')
     checkpoint = ModelCheckpoint(model_checkpoint_filepath, monitor=args.checkpoint_monitor, verbose=1,save_best_only=args.checkpoint_save_best_only, mode=args.checkpoint_mode)
 
@@ -194,7 +144,7 @@ if __name__ == '__main__':
     tensorboard = TensorBoard(log_dir=args.tensorboard_log_dir, write_graph=True, write_images=True)
     vis_cb = tf.keras.callbacks.LambdaCallback(on_epoch_end = unet_finetune_vis)
     
-    callback_list = [checkpoint, tensorboard,vis_cb ]
+    callback_list = [checkpoint, tensorboard, vis_cb ]
 
     history = model.fit_generator(generator = training_data,
                                   steps_per_epoch = steps_per_epoch,
