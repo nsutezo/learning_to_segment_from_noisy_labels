@@ -1,4 +1,4 @@
-# learning_to_segment_from_noisy_labels
+# Learning to segment from misaligned and partial labels
 ## Background
 
 ## Getting Started
